@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>468 計算器</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: "Microsoft JhengHei", Arial, sans-serif; margin: 20px; background: #f4f6f8; }
+    h1 { text-align: center; margin-bottom: 10px; }
+    .reminder {
+      background: #fff3cd;
+      border: 1px solid #ffeeba;
+      padding: 12px;
+      margin-bottom: 20px;
+      border-radius: 6px;
+      color: #856404;
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+    th { background: #0078d7; color: white; }
+    tr:nth-child(even) { background: #f9f9f9; }
+    input { width: 70px; padding: 5px; text-align: center; }
+    button { 
+      padding: 10px 15px; font-size: 1em; 
+      background: #0078d7; color: white; border: none; border-radius: 6px;
+      margin: 5px;
+    }
+    button:active { background: #005a9e; }
+    .ok { color: green; font-weight: bold; }
+    .warning { color: red; font-weight: bold; }
+    .section-title { margin-top: 20px; font-size: 1.2em; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>468 計算器</h1>
+
+  <!-- 新規定提醒區塊 -->
+  <div class="reminder">
+    <strong>📌 提醒：</strong><br>
+    「連續性合約」新規定自 <strong>2026年1月18日</strong> 起適用。<br><br>
+    僱員如符合以下條件，即屬「連續性合約」：<br>
+    1️⃣ 連續受僱於同一僱主四星期或以上；<br>
+    2️⃣ 工時符合以下其中一項：<br>
+    ‑ 每星期最少工作 <strong>17小時</strong>；或<br>
+    ‑ 若某星期少於17小時，則該星期連同過去三星期合共四星期不少於 <strong>68小時（468準則）</strong>。<br><br>
+    ⚠️ 注意：新入職首三星期必須每週至少17小時，468準則不適用。<br>
+    舊規定（2026年1月18日前）：每週最少18小時。
+  </div>
+
+  <div>
+    <button onclick="prevWindow()">◀ 上一頁</button>
+    <button onclick="nextWindow()">下一頁 ▶</button>
+  </div>
+  <div id="weeks"></div>
+
+  <div class="section-title">416 計算器結果</div>
+  <div id="output416"></div>
+
+  <div class="section-title">468 計算器結果</div>
+  <div id="output468"></div>
+
+  <script>
+    const weeks = 52;
+    const weeklyCap = 16;
+    const fourWeekCap = 67.5;
+    const startDate = new Date("2025-12-28");
+    let currentWindowStart = 1;
+
+    function formatDate(date) {
+      return date.getFullYear() + "/" +
+             (date.getMonth()+1).toString().padStart(2,"0") + "/" +
+             date.getDate().toString().padStart(2,"0");
+    }
+
+    function renderWindow() {
+      const container = document.getElementById("weeks");
+      let html = `<table>
+        <thead>
+          <tr>
+            <th>週數</th>
+            <th>日期範圍</th>
+            <th>工時</th>
+          </tr>
+        </thead>
+        <tbody>`;
+      for (let i = currentWindowStart; i < currentWindowStart+4 && i <= weeks; i++) {
+        let weekStart = new Date(startDate);
+        weekStart.setDate(startDate.getDate() + (i-1)*7);
+        let weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+
+        html += `
+          <tr>
+            <td>${i}</td>
+            <td>${formatDate(weekStart)} - ${formatDate(weekEnd)}</td>
+            <td><input type="number" id="w${i}" value="0" min="0" max="168" oninput="calculate()"></td>
+          </tr>`;
+      }
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    }
+
+    function nextWindow() {
+      if (currentWindowStart + 4 <= weeks) {
+        currentWindowStart++;
+        renderWindow();
+        calculate();
+      }
+    }
+    function prevWindow() {
+      if (currentWindowStart > 1) {
+        currentWindowStart--;
+        renderWindow();
+        calculate();
+      }
+    }
+
+    function calculate() {
+      let weeklyTotals = [];
+      for (let i = currentWindowStart; i < currentWindowStart+4 && i <= weeks; i++) {
+        let sum = parseFloat(document.getElementById(`w${i}`).value) || 0;
+        weeklyTotals.push(sum);
+      }
+
+      // 416 計算器結果
+      let table416 = `<table>
+        <tr><th>週數</th><th>工時</th><th>剩餘OT</th><th>狀態</th></tr>`;
+      for (let i = 0; i < weeklyTotals.length; i++) {
+        let remainingWeeklyOT = weeklyCap - weeklyTotals[i];
+        let weeklyClass = remainingWeeklyOT < 0 ? "warning" : "ok";
+        let statusMsg = weeklyTotals[i] > weeklyCap 
+          ? `<span class="warning">⚠️ 超過16小時，不允許</span>` 
+          : `<span class="ok">符合規定</span>`;
+        table416 += `<tr>
+          <td>${currentWindowStart+i}</td>
+          <td class="${weeklyTotals[i] >= 17 ? 'ok' : 'warning'}">${weeklyTotals[i]}</td>
+          <td class="${weeklyClass}">${remainingWeeklyOT}</td>
+          <td>${statusMsg}</td>
+        </tr>`;
+      }
+      table416 += `</table>`;
+      document.getElementById("output416").innerHTML = table416;
+
+      // 468 計算器結果
+      let fourWeekSum = weeklyTotals.reduce((a,b)=>a+b,0);
+      let remainingFourWeekOT = fourWeekCap - fourWeekSum;
+      let fourWeekClass = remainingFourWeekOT < 0 ? "warning" : "ok";
+      let statusMsg468 = remainingFourWeekOT < 0 
+        ? `<span class="warning">⚠️ 超過468準則！</span>` 
+        : `<span class="ok">符合規定</span>`;
+
+      let table468 = `<table>
+        <tr><th>週數範圍</th><th>四週總工時</th><th>剩餘四週OT</th><th>狀態</th></tr>
+        <tr>
+          <td>${currentWindowStart} - ${currentWindowStart+weeklyTotals.length-1}</td>
+          <td class="${fourWeekSum >= fourWeekCap ? 'ok' : 'warning'}">${fourWeekSum}</td>
+          <td class="${fourWeekClass}">${remainingFourWeekOT}</td>
+          <td>${statusMsg468}</td>
+        </tr>
+      </table>`;
+      document.getElementById("output468").innerHTML = table468;
+    }
+
+    renderWindow();
+    calculate(); // 初始即時顯示
+  </script>
+</body>
+</html>
